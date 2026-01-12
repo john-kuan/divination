@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Seeded RNG Divination</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
+    .card { border: 1px solid rgba(127,127,127,.35); border-radius: 16px; padding: 16px; }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+    label { font-size: 13px; font-weight: 600; }
+    input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(127,127,127,.45); font-size: 14px; }
+    button { padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(127,127,127,.45); background: transparent; cursor: pointer; }
+    button:hover { filter: brightness(1.05); }
+    .muted { opacity: .75; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 980px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+    .pill { display: inline-block; padding: 4px 8px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); margin-right: 6px; margin-top: 6px; }
+    pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+    .list { display: grid; gap: 10px; }
+    .item { border: 1px solid rgba(127,127,127,.35); border-radius: 14px; padding: 12px; }
+    .topline { display: flex; justify-content: space-between; gap: 12px; }
+    .status { font-size: 12px; opacity: .75; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h2 style="margin:0 0 6px 0;">Seeded RNG Divination</h2>
+      <div class="muted">One seed, deterministic PRNG, two independent streams: <span class="mono">seed|ICHING</span> and <span class="mono">seed|TAROT</span>.</div>
+
+      <div style="height:12px;"></div>
+
+      <div class="row">
+        <div>
+          <label for="seed">Seed (number or text)</label>
+          <input id="seed" value="20250928" placeholder="e.g., 20250928" />
+          <div class="muted" style="margin-top:6px;">Same seed = same output. Tarot and I Ching do not share random draws.</div>
+        </div>
+        <button id="gen">Generate</button>
+      </div>
+
+      <div style="height:12px;"></div>
+
+      <div><span style="font-weight:600;">Committed seed:</span> <span class="mono" id="seedOut">20250928</span></div>
+
+      <div style="height:10px;"></div>
+
+      <div class="muted">Declarative protocol example:</div>
+      <div class="card" style="border-radius:14px; padding:12px; margin-top:8px;">
+        <pre class="mono" id="proto"></pre>
+        <div style="height:10px;"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button id="copyProto">Copy seed protocol</button>
+          <button id="copyAll">Copy full prompt + results</button>
+          <span class="status" id="status"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin:0 0 6px 0;">I Ching (Stream A)</h3>
+        <div class="muted">Six dice-style rolls (1–6), bottom line first. Odd=yang, even=yin. Moving if 1 or 6.</div>
+
+        <div style="height:12px;"></div>
+
+        <div style="font-weight:600;">Rolls (bottom → top)</div>
+        <div id="rolls"></div>
+
+        <div style="height:12px;"></div>
+
+        <div style="font-weight:600;">Primary Hexagram (lines top → bottom)</div>
+        <div class="card" style="border-radius:14px; padding:12px; margin-top:8px;">
+          <div class="mono" id="lines"></div>
+        </div>
+
+        <div style="height:12px;"></div>
+
+        <div class="grid2">
+          <div class="item">
+            <div style="font-weight:600;">Primary bits (top→bottom)</div>
+            <div class="mono" style="font-size:18px;" id="pbits"></div>
+            <div class="muted" id="ptri"></div>
+          </div>
+          <div class="item">
+            <div style="font-weight:600;">Resulting bits (top→bottom)</div>
+            <div class="mono" style="font-size:18px;" id="rbits"></div>
+            <div class="muted" id="rtri"></div>
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <div class="muted">Note: This page does not label King Wen hexagram numbers/names unless you add a verified 64-hex mapping table.</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin:0 0 6px 0;">Tarot (Stream B)</h3>
+        <div class="muted">Seeded shuffle of a 78-card deck, full Celtic Cross (10 cards) with seeded reversals.</div>
+        <div style="height:12px;"></div>
+        <div class="list" id="tarot"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- PRNG: cyrb128 + sfc32 ----------
+    function cyrb128(str) {
+      let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+      for (let i = 0; i < str.length; i++) {
+        const k = str.charCodeAt(i);
+        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+        h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+        h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+      }
+      h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+      h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+      h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+      h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+      return [(h1 ^ h2 ^ h3 ^ h4) >>> 0, (h2 ^ h1) >>> 0, (h3 ^ h1) >>> 0, (h4 ^ h1) >>> 0];
+    }
+    function sfc32(a,b,c,d) {
+      return function() {
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        let t = (a + b) | 0;
+        a = b ^ (b >>> 9);
+        b = (c + (c << 3)) | 0;
+        c = (c << 21) | (c >>> 11);
+        d = (d + 1) | 0;
+        t = (t + d) | 0;
+        c = (c + t) | 0;
+        return (t >>> 0) / 4294967296;
+      };
+    }
+    function makeRng(seedStr, salt) {
+      const s = seedStr + "|" + salt;
+      const parts = cyrb128(s);
+      return sfc32(parts[0], parts[1], parts[2], parts[3]);
+    }
+    function randIntInclusive(rng, min, max) {
+      const r = rng();
+      return Math.floor(r * (max - min + 1)) + min;
+    }
+    function normalizeSeed(raw) {
+      const s = String(raw ?? "").trim();
+      return s.length ? s : "0";
+    }
+
+    // ---------- I Ching ----------
+    const TRIGRAMS = [
+      { bits: "111", name: "Qian", meaning: "Heaven", symbol: "☰" },
+      { bits: "000", name: "Kun", meaning: "Earth", symbol: "☷" },
+      { bits: "001", name: "Zhen", meaning: "Thunder", symbol: "☳" },
+      { bits: "010", name: "Kan", meaning: "Water", symbol: "☵" },
+      { bits: "011", name: "Gen", meaning: "Mountain", symbol: "☶" },
+      { bits: "100", name: "Xun", meaning: "Wind", symbol: "☴" },
+      { bits: "101", name: "Li", meaning: "Fire", symbol: "☲" },
+      { bits: "110", name: "Dui", meaning: "Lake", symbol: "☱" }
+    ];
+    function trigramFromBits(bitsBottomToTop3) {
+      const key = bitsBottomToTop3.join("");
+      return TRIGRAMS.find(t => t.bits === key) || { bits: key, name: "Unknown", meaning: "", symbol: "" };
+    }
+    function bitsTopToBottom(bitsBottomToTop) {
+      return [...bitsBottomToTop].reverse().join("");
+    }
+    function lineGlyph(isYang, isMoving) {
+      const base = isYang ? "━━━━━" : "━━━ ━━━";
+      if (!isMoving) return base;
+      return isYang ? (base + "  ○") : (base + "  ×");
+    }
+    function generateIching(seedStr) {
+      const rng = makeRng(seedStr, "ICHING");
+      const rolls = Array.from({length: 6}, () => randIntInclusive(rng, 1, 6)); // bottom->top
+      const lines = rolls.map(n => ({ n, isYang: (n % 2 === 1), isMoving: (n === 1 || n === 6) }));
+      const primaryBits = lines.map(ln => ln.isYang ? 1 : 0);
+      const resultingBits = lines.map(ln => {
+        const bit = ln.isYang ? 1 : 0;
+        if (!ln.isMoving) return bit;
+        return bit === 1 ? 0 : 1;
+      });
+      return { rolls, lines, primaryBits, resultingBits };
+    }
+
+    // ---------- Tarot ----------
+    const MAJORS = [
+      "The Fool","The Magician","The High Priestess","The Empress","The Emperor","The Hierophant",
+      "The Lovers","The Chariot","Strength","The Hermit","Wheel of Fortune","Justice","The Hanged Man",
+      "Death","Temperance","The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World"
+    ];
+    const SUITS = ["Wands","Cups","Swords","Pentacles"];
+    const RANKS = ["Ace","2","3","4","5","6","7","8","9","10","Page","Knight","Queen","King"];
+    function buildDeck78() {
+      const deck = [];
+      for (let i=0;i<MAJORS.length;i++) deck.push({ id: "M"+i, label: MAJORS[i], arcana: "Major" });
+      for (const suit of SUITS) {
+        for (const rank of RANKS) {
+          deck.push({ id: suit[0]+"-"+rank, label: rank+" of "+suit, arcana: "Minor", suit, rank });
+        }
+      }
+      return deck;
+    }
+    function seededShuffle(arr, rng) {
+      const a = [...arr];
+      for (let i=a.length-1;i>0;i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    const CELTIC_CROSS = [
+      "Present Condition","Crossing / Challenge","Root / Unconscious","Recent Past","Conscious Aim",
+      "Near Future","Self-Position","Environment","Hopes / Fears","Integrating Outcome"
+    ];
+    function generateTarot(seedStr) {
+      const rng = makeRng(seedStr, "TAROT");
+      const deck = buildDeck78();
+      const shuffled = seededShuffle(deck, rng);
+      const drawn = shuffled.slice(0,10).map(card => ({ ...card, reversed: (rng() < 0.5) }));
+      return { drawn };
+    }
+
+    // ---------- Copy helpers ----------
+    function seedProtocolText(seedStr) {
+      return "Seed: " + seedStr + "\\nUse deterministic PRNG\\nStream A for I Ching\\nStream B for Tarot";
+    }
+    function buildFullPromptPlusResults(out) {
+      const ich = out.ich;
+      const linesTopToBottom = [...ich.lines].reverse();
+      const lineText = linesTopToBottom.map((ln, idx) => {
+        const lineNo = 6 - idx;
+        const kind = ln.isYang ? "yang" : "yin";
+        const mv = ln.isMoving ? "moving" : "static";
+        return "Line " + lineNo + ": " + ln.n + " (" + kind + ", " + mv + ")";
+      }).join("\\n");
+
+      const tarotText = out.tar.drawn.map((c, i) => {
+        return (i+1) + ". " + CELTIC_CROSS[i] + ": " + c.label + (c.reversed ? " (Reversed)" : "");
+      }).join("\\n");
+
+      return [
+        seedProtocolText(out.seedStr),
+        "",
+        "I CHING (dice-style rolls bottom→top):",
+        "Rolls: " + ich.rolls.join(" "),
+        "Lines (top→bottom):",
+        lineText,
+        "",
+        "TAROT (Celtic Cross):",
+        tarotText
+      ].join("\\n");
+    }
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        try {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    }
+
+    // ---------- Render ----------
+    function render(out) {
+      document.getElementById("seedOut").textContent = out.seedStr;
+      document.getElementById("proto").textContent = seedProtocolText(out.seedStr);
+
+      // rolls pills
+      const rollsEl = document.getElementById("rolls");
+      rollsEl.innerHTML = "";
+      out.ich.rolls.forEach(r => {
+        const s = document.createElement("span");
+        s.className = "pill mono";
+        s.textContent = String(r);
+        rollsEl.appendChild(s);
+      });
+
+      // lines
+      const linesEl = document.getElementById("lines");
+      linesEl.innerHTML = "";
+      [...out.ich.lines].reverse().forEach(ln => {
+        const div = document.createElement("div");
+        div.style.display = "flex";
+        div.style.justifyContent = "space-between";
+        div.style.gap = "12px";
+        const left = document.createElement("span");
+        left.textContent = lineGlyph(ln.isYang, ln.isMoving);
+        const right = document.createElement("span");
+        right.className = "muted";
+        right.textContent = ln.isMoving ? "moving" : "static";
+        div.appendChild(left);
+        div.appendChild(right);
+        linesEl.appendChild(div);
+      });
+
+      // bits + trigrams
+      document.getElementById("pbits").textContent = out.primary.bits;
+      document.getElementById("rbits").textContent = out.resulting.bits;
+
+      document.getElementById("ptri").innerHTML =
+        "Upper trigram: " + out.primary.upper.symbol + " " + out.primary.upper.name + " (" + out.primary.upper.meaning + ")" +
+        "<br/>Lower trigram: " + out.primary.lower.symbol + " " + out.primary.lower.name + " (" + out.primary.lower.meaning + ")";
+
+      document.getElementById("rtri").innerHTML =
+        "Upper trigram: " + out.resulting.upper.symbol + " " + out.resulting.upper.name + " (" + out.resulting.upper.meaning + ")" +
+        "<br/>Lower trigram: " + out.resulting.lower.symbol + " " + out.resulting.lower.name + " (" + out.resulting.lower.meaning + ")";
+
+      // tarot list
+      const tarotEl = document.getElementById("tarot");
+      tarotEl.innerHTML = "";
+      out.tar.drawn.forEach((card, i) => {
+        const item = document.createElement("div");
+        item.className = "item";
+        const top = document.createElement("div");
+        top.className = "topline";
+        const left = document.createElement("div");
+        const title = document.createElement("div");
+        title.style.fontWeight = "600";
+        title.textContent = (i+1) + ". " + CELTIC_CROSS[i];
+        const label = document.createElement("div");
+        label.textContent = card.label + (card.reversed ? " (Reversed)" : "");
+        left.appendChild(title);
+        left.appendChild(label);
+
+        const right = document.createElement("div");
+        right.className = "muted";
+        right.style.textAlign = "right";
+        right.textContent = card.arcana + (card.suit ? " · " + card.suit : "");
+
+        top.appendChild(left);
+        top.appendChild(right);
+        item.appendChild(top);
+        tarotEl.appendChild(item);
+      });
+    }
+
+    function compute(seedStr) {
+      const ich = generateIching(seedStr);
+      const tar = generateTarot(seedStr);
+
+      const primaryLower = trigramFromBits(ich.primaryBits.slice(0,3));
+      const primaryUpper = trigramFromBits(ich.primaryBits.slice(3,6));
+      const resultingLower = trigramFromBits(ich.resultingBits.slice(0,3));
+      const resultingUpper = trigramFromBits(ich.resultingBits.slice(3,6));
+
+      return {
+        seedStr,
+        ich,
+        tar,
+        primary: { bits: bitsTopToBottom(ich.primaryBits), lower: primaryLower, upper: primaryUpper },
+        resulting: { bits: bitsTopToBottom(ich.resultingBits), lower: resultingLower, upper: resultingUpper }
+      };
+    }
+
+    const seedInput = document.getElementById("seed");
+    const statusEl = document.getElementById("status");
+
+    let currentOut = compute(normalizeSeed(seedInput.value));
+    render(currentOut);
+
+    document.getElementById("gen").addEventListener("click", () => {
+      const seedStr = normalizeSeed(seedInput.value);
+      currentOut = compute(seedStr);
+      render(currentOut);
+      statusEl.textContent = "";
+    });
+
+    document.getElementById("copyProto").addEventListener("click", async () => {
+      const ok = await copyToClipboard(seedProtocolText(currentOut.seedStr));
+      statusEl.textContent = ok ? "Copied seed protocol." : "Copy failed (clipboard blocked).";
+      setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
+    });
+
+    document.getElementById("copyAll").addEventListener("click", async () => {
+      const ok = await copyToClipboard(buildFullPromptPlusResults(currentOut));
+      statusEl.textContent = ok ? "Copied full prompt + results." : "Copy failed (clipboard blocked).";
+      setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
+    });
+  </script>
+</body>
+</html>
