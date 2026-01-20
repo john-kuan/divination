@@ -11,8 +11,22 @@
     .card { border: 1px solid rgba(127,127,127,.35); border-radius: 16px; padding: 16px; }
     .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
     label { font-size: 13px; font-weight: 600; }
-    input { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(127,127,127,.45); font-size: 14px; }
-    button { padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(127,127,127,.45); background: transparent; cursor: pointer; }
+    input {
+      width: 100%;
+      max-width: 520px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(127,127,127,.45);
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(127,127,127,.45);
+      background: transparent;
+      cursor: pointer;
+      white-space: nowrap;
+    }
     button:hover { filter: brightness(1.05); }
     .muted { opacity: .75; font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
@@ -30,28 +44,39 @@
   <div class="wrap">
     <div class="card">
       <h2 style="margin:0 0 6px 0;">Seeded RNG Divination</h2>
-      <div class="muted">One seed, deterministic PRNG, two independent streams: <span class="mono">seed|ICHING</span> and <span class="mono">seed|TAROT</span>.</div>
+      <div class="muted">
+        One seed, deterministic PRNG, two independent streams:
+        <span class="mono">seed|ICHING</span> and <span class="mono">seed|TAROT</span>.
+      </div>
 
       <div style="height:12px;"></div>
 
       <div class="row">
         <div>
-          <label for="seed">Seed (number or text)</label>
-          <input id="seed" value="20250928" placeholder="e.g., 20250928" />
-          <div class="muted" style="margin-top:6px;">Same seed = same output. Tarot and I Ching do not share random draws.</div>
+          <label for="seed">Seed (leave blank for noise)</label>
+          <input
+            id="seed"
+            value=""
+            maxlength="64"
+            size="40"
+            placeholder="(blank = Generate creates noise)"
+          />
+          <div class="muted" style="margin-top:6px;">
+            Max 64 characters. Same seed yields the same reading. If blank, Generate creates a random seed using browser entropy.
+          </div>
         </div>
         <button id="gen">Generate</button>
       </div>
 
       <div style="height:12px;"></div>
 
-      <div><span style="font-weight:600;">Committed seed:</span> <span class="mono" id="seedOut">20250928</span></div>
+      <div><span style="font-weight:600;">Committed seed:</span> <span class="mono" id="seedOut">(none yet)</span></div>
 
       <div style="height:10px;"></div>
 
       <div class="muted">Declarative protocol example:</div>
       <div class="card" style="border-radius:14px; padding:12px; margin-top:8px;">
-        <pre class="mono" id="proto"></pre>
+        <pre class="mono" id="proto">(generate to fill)</pre>
         <div style="height:10px;"></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
           <button id="copyProto">Copy seed protocol</button>
@@ -123,6 +148,7 @@
       h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
       return [(h1 ^ h2 ^ h3 ^ h4) >>> 0, (h2 ^ h1) >>> 0, (h3 ^ h1) >>> 0, (h4 ^ h1) >>> 0];
     }
+
     function sfc32(a,b,c,d) {
       return function() {
         a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
@@ -136,18 +162,30 @@
         return (t >>> 0) / 4294967296;
       };
     }
+
     function makeRng(seedStr, salt) {
-      const s = seedStr + "|" + salt;
-      const parts = cyrb128(s);
+      const parts = cyrb128(seedStr + "|" + salt);
       return sfc32(parts[0], parts[1], parts[2], parts[3]);
     }
+
     function randIntInclusive(rng, min, max) {
       const r = rng();
       return Math.floor(r * (max - min + 1)) + min;
     }
+
     function normalizeSeed(raw) {
       const s = String(raw ?? "").trim();
       return s.length ? s : "0";
+    }
+
+    // ---------- Noise seed (true browser entropy) ----------
+    function generateNoiseSeed(length = 32) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const arr = new Uint32Array(length);
+      crypto.getRandomValues(arr);
+      let out = "";
+      for (let i = 0; i < length; i++) out += chars[arr[i] % chars.length];
+      return out;
     }
 
     // ---------- I Ching ----------
@@ -161,18 +199,22 @@
       { bits: "101", name: "Li", meaning: "Fire", symbol: "☲" },
       { bits: "110", name: "Dui", meaning: "Lake", symbol: "☱" }
     ];
+
     function trigramFromBits(bitsBottomToTop3) {
       const key = bitsBottomToTop3.join("");
       return TRIGRAMS.find(t => t.bits === key) || { bits: key, name: "Unknown", meaning: "", symbol: "" };
     }
+
     function bitsTopToBottom(bitsBottomToTop) {
       return [...bitsBottomToTop].reverse().join("");
     }
+
     function lineGlyph(isYang, isMoving) {
       const base = isYang ? "━━━━━" : "━━━ ━━━";
       if (!isMoving) return base;
       return isYang ? (base + "  ○") : (base + "  ×");
     }
+
     function generateIching(seedStr) {
       const rng = makeRng(seedStr, "ICHING");
       const rolls = Array.from({length: 6}, () => randIntInclusive(rng, 1, 6)); // bottom->top
@@ -194,6 +236,7 @@
     ];
     const SUITS = ["Wands","Cups","Swords","Pentacles"];
     const RANKS = ["Ace","2","3","4","5","6","7","8","9","10","Page","Knight","Queen","King"];
+
     function buildDeck78() {
       const deck = [];
       for (let i=0;i<MAJORS.length;i++) deck.push({ id: "M"+i, label: MAJORS[i], arcana: "Major" });
@@ -204,6 +247,7 @@
       }
       return deck;
     }
+
     function seededShuffle(arr, rng) {
       const a = [...arr];
       for (let i=a.length-1;i>0;i--) {
@@ -212,10 +256,12 @@
       }
       return a;
     }
+
     const CELTIC_CROSS = [
       "Present Condition","Crossing / Challenge","Root / Unconscious","Recent Past","Conscious Aim",
       "Near Future","Self-Position","Environment","Hopes / Fears","Integrating Outcome"
     ];
+
     function generateTarot(seedStr) {
       const rng = makeRng(seedStr, "TAROT");
       const deck = buildDeck78();
@@ -228,9 +274,11 @@
     function seedProtocolText(seedStr) {
       return "Seed: " + seedStr + "\\nUse deterministic PRNG\\nStream A for I Ching\\nStream B for Tarot";
     }
+
     function buildFullPromptPlusResults(out) {
       const ich = out.ich;
       const linesTopToBottom = [...ich.lines].reverse();
+
       const lineText = linesTopToBottom.map((ln, idx) => {
         const lineNo = 6 - idx;
         const kind = ln.isYang ? "yang" : "yin";
@@ -254,6 +302,7 @@
         tarotText
       ].join("\\n");
     }
+
     async function copyToClipboard(text) {
       try {
         await navigator.clipboard.writeText(text);
@@ -298,11 +347,14 @@
         div.style.display = "flex";
         div.style.justifyContent = "space-between";
         div.style.gap = "12px";
+
         const left = document.createElement("span");
         left.textContent = lineGlyph(ln.isYang, ln.isMoving);
+
         const right = document.createElement("span");
         right.className = "muted";
         right.textContent = ln.isMoving ? "moving" : "static";
+
         div.appendChild(left);
         div.appendChild(right);
         linesEl.appendChild(div);
@@ -326,14 +378,18 @@
       out.tar.drawn.forEach((card, i) => {
         const item = document.createElement("div");
         item.className = "item";
+
         const top = document.createElement("div");
         top.className = "topline";
+
         const left = document.createElement("div");
         const title = document.createElement("div");
         title.style.fontWeight = "600";
         title.textContent = (i+1) + ". " + CELTIC_CROSS[i];
+
         const label = document.createElement("div");
         label.textContent = card.label + (card.reversed ? " (Reversed)" : "");
+
         left.appendChild(title);
         left.appendChild(label);
 
@@ -367,26 +423,45 @@
       };
     }
 
+    // ---------- Wire up UI ----------
     const seedInput = document.getElementById("seed");
     const statusEl = document.getElementById("status");
 
-    let currentOut = compute(normalizeSeed(seedInput.value));
-    render(currentOut);
+    // Start with no computed output until user generates
+    let currentOut = null;
 
     document.getElementById("gen").addEventListener("click", () => {
-      const seedStr = normalizeSeed(seedInput.value);
+      let seedStr = seedInput.value.trim();
+
+      // If empty, generate noise (length 32, fits within 64 max)
+      if (!seedStr) {
+        seedStr = generateNoiseSeed(32);
+        seedInput.value = seedStr;
+      }
+
+      seedStr = normalizeSeed(seedStr);
       currentOut = compute(seedStr);
       render(currentOut);
       statusEl.textContent = "";
     });
 
     document.getElementById("copyProto").addEventListener("click", async () => {
+      if (!currentOut) {
+        statusEl.textContent = "Generate first.";
+        setTimeout(() => statusEl.textContent = "", 2000);
+        return;
+      }
       const ok = await copyToClipboard(seedProtocolText(currentOut.seedStr));
       statusEl.textContent = ok ? "Copied seed protocol." : "Copy failed (clipboard blocked).";
       setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
     });
 
     document.getElementById("copyAll").addEventListener("click", async () => {
+      if (!currentOut) {
+        statusEl.textContent = "Generate first.";
+        setTimeout(() => statusEl.textContent = "", 2000);
+        return;
+      }
       const ok = await copyToClipboard(buildFullPromptPlusResults(currentOut));
       statusEl.textContent = ok ? "Copied full prompt + results." : "Copy failed (clipboard blocked).";
       setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
