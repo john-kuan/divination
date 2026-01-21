@@ -4,42 +4,107 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Seeded RNG Divination</title>
+
+  <!-- DEPLOY TEST: updated on 2026-01-20 -->
+
   <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; }
+    /* Forced night mode */
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --card: #101826;
+      --text: #e7edf6;
+      --muted: rgba(231, 237, 246, 0.72);
+      --border: rgba(231, 237, 246, 0.18);
+      --border-strong: rgba(231, 237, 246, 0.28);
+      --chip: rgba(231, 237, 246, 0.08);
+      --btn: rgba(231, 237, 246, 0.06);
+      --btn-hover: rgba(231, 237, 246, 0.10);
+      --focus: rgba(120, 170, 255, 0.35);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+    }
+
     .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
-    .card { border: 1px solid rgba(127,127,127,.35); border-radius: 16px; padding: 16px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
     .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+    .rowBtns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
     label { font-size: 13px; font-weight: 600; }
+
     input {
       width: 100%;
       max-width: 520px;
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(127,127,127,.45);
+      border: 1px solid var(--border-strong);
+      background: rgba(0,0,0,0.15);
+      color: var(--text);
       font-size: 14px;
+      outline: none;
     }
+
+    input:focus {
+      box-shadow: 0 0 0 4px var(--focus);
+      border-color: rgba(120, 170, 255, 0.55);
+    }
+
     button {
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(127,127,127,.45);
-      background: transparent;
+      border: 1px solid var(--border-strong);
+      background: var(--btn);
+      color: var(--text);
       cursor: pointer;
       white-space: nowrap;
     }
-    button:hover { filter: brightness(1.05); }
-    .muted { opacity: .75; font-size: 12px; }
+
+    button:hover { background: var(--btn-hover); }
+
+    .muted { opacity: .92; color: var(--muted); font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
     .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
     @media (min-width: 980px) { .grid2 { grid-template-columns: 1fr 1fr; } }
-    .pill { display: inline-block; padding: 4px 8px; border-radius: 10px; border: 1px solid rgba(127,127,127,.35); margin-right: 6px; margin-top: 6px; }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--chip);
+      margin-right: 6px;
+      margin-top: 6px;
+    }
+
     pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+
     .list { display: grid; gap: 10px; }
-    .item { border: 1px solid rgba(127,127,127,.35); border-radius: 14px; padding: 12px; }
+    .item {
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.10);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
     .topline { display: flex; justify-content: space-between; gap: 12px; }
-    .status { font-size: 12px; opacity: .75; }
+    .status { font-size: 12px; color: var(--muted); }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <div class="card">
@@ -65,7 +130,11 @@
             Max 64 characters. Same seed yields the same reading. If blank, Generate creates a random seed using browser entropy.
           </div>
         </div>
-        <button id="gen">Generate</button>
+
+        <div class="rowBtns">
+          <button id="clear">Clear seed</button>
+          <button id="gen">Generate</button>
+        </div>
       </div>
 
       <div style="height:12px;"></div>
@@ -75,7 +144,7 @@
       <div style="height:10px;"></div>
 
       <div class="muted">Declarative protocol example:</div>
-      <div class="card" style="border-radius:14px; padding:12px; margin-top:8px;">
+      <div class="card" style="border-radius:14px; padding:12px; margin-top:8px; background: rgba(0,0,0,0.12);">
         <pre class="mono" id="proto">(generate to fill)</pre>
         <div style="height:10px;"></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
@@ -99,7 +168,7 @@
         <div style="height:12px;"></div>
 
         <div style="font-weight:600;">Primary Hexagram (lines top → bottom)</div>
-        <div class="card" style="border-radius:14px; padding:12px; margin-top:8px;">
+        <div class="card" style="border-radius:14px; padding:12px; margin-top:8px; background: rgba(0,0,0,0.12);">
           <div class="mono" id="lines"></div>
         </div>
 
@@ -178,7 +247,7 @@
       return s.length ? s : "0";
     }
 
-    // ---------- Noise seed (true browser entropy) ----------
+    // ---------- Noise seed (browser entropy) ----------
     function generateNoiseSeed(length = 32) {
       const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
       const arr = new Uint32Array(length);
@@ -272,7 +341,7 @@
 
     // ---------- Copy helpers ----------
     function seedProtocolText(seedStr) {
-      return "Seed: " + seedStr + "\\nUse deterministic PRNG\\nStream A for I Ching\\nStream B for Tarot";
+      return "Seed: " + seedStr + "\nUse deterministic PRNG\nStream A for I Ching\nStream B for Tarot";
     }
 
     function buildFullPromptPlusResults(out) {
@@ -284,11 +353,11 @@
         const kind = ln.isYang ? "yang" : "yin";
         const mv = ln.isMoving ? "moving" : "static";
         return "Line " + lineNo + ": " + ln.n + " (" + kind + ", " + mv + ")";
-      }).join("\\n");
+      }).join("\n");
 
       const tarotText = out.tar.drawn.map((c, i) => {
         return (i+1) + ". " + CELTIC_CROSS[i] + ": " + c.label + (c.reversed ? " (Reversed)" : "");
-      }).join("\\n");
+      }).join("\n");
 
       return [
         seedProtocolText(out.seedStr),
@@ -300,7 +369,7 @@
         "",
         "TAROT (Celtic Cross):",
         tarotText
-      ].join("\\n");
+      ].join("\n");
     }
 
     async function copyToClipboard(text) {
@@ -329,7 +398,6 @@
       document.getElementById("seedOut").textContent = out.seedStr;
       document.getElementById("proto").textContent = seedProtocolText(out.seedStr);
 
-      // rolls pills
       const rollsEl = document.getElementById("rolls");
       rollsEl.innerHTML = "";
       out.ich.rolls.forEach(r => {
@@ -339,7 +407,6 @@
         rollsEl.appendChild(s);
       });
 
-      // lines
       const linesEl = document.getElementById("lines");
       linesEl.innerHTML = "";
       [...out.ich.lines].reverse().forEach(ln => {
@@ -360,7 +427,6 @@
         linesEl.appendChild(div);
       });
 
-      // bits + trigrams
       document.getElementById("pbits").textContent = out.primary.bits;
       document.getElementById("rbits").textContent = out.resulting.bits;
 
@@ -372,7 +438,6 @@
         "Upper trigram: " + out.resulting.upper.symbol + " " + out.resulting.upper.name + " (" + out.resulting.upper.meaning + ")" +
         "<br/>Lower trigram: " + out.resulting.lower.symbol + " " + out.resulting.lower.name + " (" + out.resulting.lower.meaning + ")";
 
-      // tarot list
       const tarotEl = document.getElementById("tarot");
       tarotEl.innerHTML = "";
       out.tar.drawn.forEach((card, i) => {
@@ -405,6 +470,18 @@
       });
     }
 
+    function clearUI() {
+      document.getElementById("seedOut").textContent = "(none yet)";
+      document.getElementById("proto").textContent = "(generate to fill)";
+      document.getElementById("rolls").innerHTML = "";
+      document.getElementById("lines").innerHTML = "";
+      document.getElementById("pbits").textContent = "";
+      document.getElementById("rbits").textContent = "";
+      document.getElementById("ptri").innerHTML = "";
+      document.getElementById("rtri").innerHTML = "";
+      document.getElementById("tarot").innerHTML = "";
+    }
+
     function compute(seedStr) {
       const ich = generateIching(seedStr);
       const tar = generateTarot(seedStr);
@@ -426,14 +503,11 @@
     // ---------- Wire up UI ----------
     const seedInput = document.getElementById("seed");
     const statusEl = document.getElementById("status");
-
-    // Start with no computed output until user generates
     let currentOut = null;
 
     document.getElementById("gen").addEventListener("click", () => {
       let seedStr = seedInput.value.trim();
 
-      // If empty, generate noise (length 32, fits within 64 max)
       if (!seedStr) {
         seedStr = generateNoiseSeed(32);
         seedInput.value = seedStr;
@@ -443,6 +517,13 @@
       currentOut = compute(seedStr);
       render(currentOut);
       statusEl.textContent = "";
+    });
+
+    document.getElementById("clear").addEventListener("click", () => {
+      seedInput.value = "";
+      currentOut = null;
+      statusEl.textContent = "";
+      clearUI();
     });
 
     document.getElementById("copyProto").addEventListener("click", async () => {
@@ -466,6 +547,9 @@
       statusEl.textContent = ok ? "Copied full prompt + results." : "Copy failed (clipboard blocked).";
       setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
     });
+
+    // Start in cleared state
+    clearUI();
   </script>
 </body>
 </html>
