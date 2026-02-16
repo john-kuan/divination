@@ -1,738 +1,924 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Seed Protocol Prompt Builder</title>
-    <style>
-      :root {
-        color-scheme: dark;
-        --bg: #0b0f14;
-        --panel: #0f1620;
-        --panel-2: #0c121a;
-        --text: #e6edf3;
-        --muted: #9fb0c0;
-        --border: #233041;
-        --accent: #86b7ff;
-        --good: #7ee787;
-        --warn: #f2cc60;
-        --bad: #ff7b72;
-        --shadow: rgba(0, 0, 0, 0.35);
-      }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Seeded RNG Divination</title>
 
-      * { box-sizing: border-box; }
+  <!-- DEPLOY TEST: updated on 2026-01-20 -->
 
-      body {
-        margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-        background: radial-gradient(1200px 700px at 20% -10%, rgba(134, 183, 255, 0.10), transparent 55%),
-          radial-gradient(900px 550px at 90% 0%, rgba(126, 231, 135, 0.08), transparent 50%),
-          var(--bg);
-        color: var(--text);
-      }
+  <style>
+    /* Forced night mode */
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f14;
+      --card: #101826;
+      --text: #e7edf6;
+      --muted: rgba(231, 237, 246, 0.72);
+      --border: rgba(231, 237, 246, 0.18);
+      --border-strong: rgba(231, 237, 246, 0.28);
+      --chip: rgba(231, 237, 246, 0.08);
+      --btn: rgba(231, 237, 246, 0.06);
+      --btn-hover: rgba(231, 237, 246, 0.10);
+      --focus: rgba(120, 170, 255, 0.35);
+      --good: rgba(126, 231, 135, 0.9);
+      --warn: rgba(242, 204, 96, 0.9);
+      --bad: rgba(255, 123, 114, 0.9);
+    }
 
-      .wrap {
-        max-width: 980px;
-        margin: 0 auto;
-        padding: 28px 16px 40px;
-      }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+    }
 
-      header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 18px;
-      }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 16px; }
 
-      h1 {
-        margin: 0;
-        font-size: 22px;
-        letter-spacing: 0.2px;
-      }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
 
-      .sub {
-        margin-top: 6px;
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.35;
-      }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+    .rowBtns { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
-      .grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 14px;
-      }
+    label { font-size: 13px; font-weight: 600; }
 
-      @media (min-width: 920px) {
-        .grid { grid-template-columns: 1.05fr 0.95fr; }
-      }
+    input {
+      width: 100%;
+      max-width: 520px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-strong);
+      background: rgba(0,0,0,0.15);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+    }
 
-      .card {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 55%), var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        box-shadow: 0 18px 40px var(--shadow);
-        padding: 16px;
-      }
+    input:focus {
+      box-shadow: 0 0 0 4px var(--focus);
+      border-color: rgba(120, 170, 255, 0.55);
+    }
 
-      .card h2 {
-        margin: 0 0 10px;
-        font-size: 14px;
-        letter-spacing: 0.25px;
-        color: var(--muted);
-        text-transform: uppercase;
-      }
+    button {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-strong);
+      background: var(--btn);
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+    }
 
-      label {
-        display: block;
-        font-size: 12px;
-        color: var(--muted);
-        margin: 12px 0 6px;
-      }
+    button:hover { background: var(--btn-hover); }
 
-      input[type="text"], textarea, select, input[type="datetime-local"], input[type="date"] {
-        width: 100%;
-        background: var(--panel-2);
-        color: var(--text);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px 12px;
-        font-size: 14px;
-        outline: none;
-      }
+    .muted { opacity: .92; color: var(--muted); font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 
-      input[type="text"]:focus, textarea:focus, select:focus, input[type="datetime-local"]:focus, input[type="date"]:focus {
-        border-color: rgba(134, 183, 255, 0.75);
-        box-shadow: 0 0 0 3px rgba(134, 183, 255, 0.15);
-      }
+    .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 980px) { .grid2 { grid-template-columns: 1fr 1fr; } }
 
-      textarea {
-        min-height: 220px;
-        resize: vertical;
-        line-height: 1.35;
-        white-space: pre;
-      }
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--chip);
+      margin-right: 6px;
+      margin-top: 6px;
+    }
 
-      .row {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
+    pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
 
-      @media (min-width: 520px) {
-        .row { grid-template-columns: 1fr 1fr; }
-      }
+    .list { display: grid; gap: 10px; }
+    .item {
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.10);
+      border-radius: 14px;
+      padding: 12px;
+    }
 
-      .btns {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 14px;
-      }
+    .topline { display: flex; justify-content: space-between; gap: 12px; }
+    .status { font-size: 12px; color: var(--muted); }
 
-      button {
-        appearance: none;
-        border: 1px solid var(--border);
-        background: rgba(134, 183, 255, 0.10);
-        color: var(--text);
-        padding: 10px 12px;
-        border-radius: 12px;
-        font-weight: 600;
-        font-size: 13px;
-        cursor: pointer;
-        transition: transform 0.06s ease, background 0.15s ease, border-color 0.15s ease;
-      }
+    .kv {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 8px 12px;
+      align-items: baseline;
+      margin-top: 10px;
+    }
+    .kv > div:nth-child(odd) { color: var(--muted); font-size: 12px; }
+    .kv > div:nth-child(even) { color: var(--text); font-size: 13px; }
 
-      button:hover {
-        background: rgba(134, 183, 255, 0.16);
-        border-color: rgba(134, 183, 255, 0.45);
-      }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.12);
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: 10px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 999px; background: var(--warn); }
 
-      button:active { transform: translateY(1px); }
+    ul.vedic { margin: 10px 0 0; padding-left: 18px; color: var(--text); font-size: 13px; line-height: 1.45; }
+    .warnbox {
+      border: 1px solid rgba(242, 204, 96, 0.35);
+      background: rgba(242, 204, 96, 0.06);
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+  </style>
+</head>
 
-      button.secondary {
-        background: rgba(255, 255, 255, 0.04);
-      }
-
-      button.danger {
-        background: rgba(255, 123, 114, 0.08);
-      }
-
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 10px;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.03);
-        font-size: 12px;
-        color: var(--muted);
-        margin-top: 10px;
-      }
-
-      .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: var(--warn);
-      }
-
-      .dot.good { background: var(--good); }
-      .dot.bad { background: var(--bad); }
-
-      .mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      }
-
-      .small {
-        font-size: 12px;
-        color: var(--muted);
-        line-height: 1.35;
-      }
-
-      .hr {
-        height: 1px;
-        background: var(--border);
-        margin: 14px 0;
-      }
-
-      .kv {
-        display: grid;
-        grid-template-columns: 140px 1fr;
-        gap: 8px 12px;
-        font-size: 13px;
-        align-items: baseline;
-      }
-
-      .kv div:nth-child(odd) { color: var(--muted); }
-      .kv div:nth-child(even) { color: var(--text); }
-
-      .list {
-        margin: 10px 0 0;
-        padding-left: 18px;
-        color: var(--text);
-        font-size: 13px;
-        line-height: 1.45;
-      }
-
-      .warnbox {
-        border: 1px solid rgba(242, 204, 96, 0.35);
-        background: rgba(242, 204, 96, 0.06);
-        border-radius: 12px;
-        padding: 10px 12px;
-        margin-top: 12px;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.35;
-      }
-
-      .nowrap { white-space: nowrap; }
-    </style>
-  </head>
-
-  <body>
-    <div class="wrap">
-      <header>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
         <div>
-          <h1>Workflow B Prompt Builder</h1>
-          <div class="sub">
-            Single-file HTML for GitHub Pages, with accurate Dreamspell (Argüelles) and Vedic (sidereal Lahiri) calculations.
+          <h2 style="margin:0 0 6px 0;">Seeded RNG Divination</h2>
+          <div class="muted">
+            One seed, deterministic PRNG, two independent streams:
+            <span class="mono">seed|ICHING</span> and <span class="mono">seed|TAROT</span>.
           </div>
         </div>
-        <div class="pill" id="statusPill" title="Library status">
-          <span class="dot" id="statusDot"></span>
-          <span id="statusText">Loading Swiss Ephemeris…</span>
+        <div class="badge" title="Swiss Ephemeris status">
+          <span class="dot" id="sweDot"></span>
+          <span id="sweStatus">Loading ephemeris…</span>
         </div>
-      </header>
+      </div>
 
-      <div class="grid">
-        <section class="card">
-          <h2>Inputs</h2>
+      <div style="height:12px;"></div>
 
-          <div class="row">
-            <div>
-              <label for="seed">Seed (max 64 chars)</label>
-              <input id="seed" type="text" class="mono" maxlength="64" placeholder="(leave blank or generate noise)" />
-              <div class="small" id="seedCount">0 / 64</div>
-
-              <div class="btns">
-                <button id="genSeedBtn" type="button">Generate Noise Seed</button>
-                <button id="clearBtn" type="button" class="danger">Clear</button>
-              </div>
-            </div>
-
-            <div>
-              <label for="when">Date and Time (America/Detroit)</label>
-              <input id="when" type="datetime-local" />
-              <div class="small">
-                Used for Vedic transits (converted to UTC internally). Dreamspell uses the calendar date portion.
-              </div>
-
-              <label for="streams" style="margin-top: 12px;">Streams</label>
-              <select id="streams">
-                <option value="A-iching_B-tarot" selected>Stream A = I Ching, Stream B = Tarot</option>
-                <option value="A-tarot_B-iching">Stream A = Tarot, Stream B = I Ching</option>
-              </select>
-              <div class="small">
-                This only formats the prompt; it does not force linking numbers between systems.
-              </div>
-            </div>
+      <div class="row">
+        <div>
+          <label for="seed">Seed (leave blank for noise)</label>
+          <input
+            id="seed"
+            value=""
+            maxlength="64"
+            size="40"
+            placeholder="(blank = Generate creates noise)"
+          />
+          <div class="muted" style="margin-top:6px;">
+            Max 64 characters. Same seed yields the same reading. If blank, Generate creates a random seed using browser entropy.
           </div>
 
-          <div class="hr"></div>
+          <div style="height:10px;"></div>
 
-          <div class="btns">
-            <button id="buildBtn" type="button">Build Prompt</button>
-            <button id="copyBtn" type="button" class="secondary">Copy Prompt</button>
+          <label for="when">Date/Time (local, used for Dreamspell + Vedic)</label>
+          <input id="when" type="datetime-local" />
+          <div class="muted" style="margin-top:6px;">
+            Best-guess default is “current moment.” If you prefer noon or midnight calculations, tell me and I’ll lock it.
           </div>
+        </div>
 
-          <div class="warnbox">
-            Note: Swiss Ephemeris WASM is GPL-licensed; keep your repo open-source if you publish this on GitHub Pages.
-          </div>
-        </section>
+        <div class="rowBtns">
+          <button id="clear">Clear seed</button>
+          <button id="gen">Generate</button>
+        </div>
+      </div>
 
-        <section class="card">
-          <h2>Output</h2>
-          <label for="prompt">Prompt</label>
-          <textarea id="prompt" class="mono" readonly></textarea>
-          <div class="small" id="copyState"></div>
+      <div style="height:12px;"></div>
 
-          <div class="hr"></div>
+      <div><span style="font-weight:600;">Committed seed:</span> <span class="mono" id="seedOut">(none yet)</span></div>
 
-          <h2>Calculated Components</h2>
+      <div class="kv">
+        <div>Dreamspell</div>
+        <div class="mono" id="dreamspellLine">—</div>
 
-          <div class="kv">
-            <div>Dreamspell</div>
-            <div id="dreamspellLine" class="mono">—</div>
+        <div>13 Moon date</div>
+        <div class="mono" id="moonLine">—</div>
 
-            <div>13 Moon Date</div>
-            <div id="moonLine" class="mono">—</div>
+        <div>Vedic sidereal</div>
+        <div class="mono" id="vedicLine">—</div>
+      </div>
 
-            <div>Vedic Sidereal</div>
-            <div id="vedicLine" class="mono">—</div>
-          </div>
+      <ul class="vedic" id="vedicList"></ul>
 
-          <ul class="list" id="vedicList"></ul>
-        </section>
+      <div class="warnbox">
+        Vedic transits here use Swiss Ephemeris WASM (Lahiri sidereal). The wrapper is GPL-licensed. Keep the repo open-source if you publish on GitHub Pages.
+      </div>
+
+      <div style="height:12px;"></div>
+
+      <div class="muted">Declarative protocol example:</div>
+      <div class="card" style="border-radius:14px; padding:12px; margin-top:8px; background: rgba(0,0,0,0.12);">
+        <pre class="mono" id="proto">(generate to fill)</pre>
+        <div style="height:10px;"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+          <button id="copyProto">Copy seed protocol</button>
+          <button id="copyAll">Copy full prompt + results</button>
+          <span class="status" id="status"></span>
+        </div>
       </div>
     </div>
 
-    <script type="module">
-      // Swiss Ephemeris WASM wrapper (GPL). CDN import pattern per project README.
-      // Source: https://github.com/prolaxu/swisseph-wasm
-      import SwissEph from "https://cdn.jsdelivr.net/gh/prolaxu/swisseph-wasm@main/src/swisseph.js";
+    <div class="grid2">
+      <div class="card">
+        <h3 style="margin:0 0 6px 0;">I Ching (Stream A)</h3>
+        <div class="muted">Six dice-style rolls (1–6), bottom line first. Odd=yang, even=yin. Moving if 1 or 6.</div>
 
-      const seedEl = document.getElementById("seed");
-      const seedCountEl = document.getElementById("seedCount");
-      const genSeedBtn = document.getElementById("genSeedBtn");
-      const clearBtn = document.getElementById("clearBtn");
+        <div style="height:12px;"></div>
+
+        <div style="font-weight:600;">Rolls (bottom → top)</div>
+        <div id="rolls"></div>
+
+        <div style="height:12px;"></div>
+
+        <div style="font-weight:600;">Primary Hexagram (lines top → bottom)</div>
+        <div class="card" style="border-radius:14px; padding:12px; margin-top:8px; background: rgba(0,0,0,0.12);">
+          <div class="mono" id="lines"></div>
+        </div>
+
+        <div style="height:12px;"></div>
+
+        <div class="grid2">
+          <div class="item">
+            <div style="font-weight:600;">Primary bits (top→bottom)</div>
+            <div class="mono" style="font-size:18px;" id="pbits"></div>
+            <div class="muted" id="ptri"></div>
+          </div>
+          <div class="item">
+            <div style="font-weight:600;">Resulting bits (top→bottom)</div>
+            <div class="mono" style="font-size:18px;" id="rbits"></div>
+            <div class="muted" id="rtri"></div>
+          </div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <div class="muted">Note: This page does not label King Wen hexagram numbers/names unless you add a verified 64-hex mapping table.</div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin:0 0 6px 0;">Tarot (Stream B)</h3>
+        <div class="muted">Seeded shuffle of a 78-card deck, full Celtic Cross (10 cards) with seeded reversals.</div>
+        <div style="height:12px;"></div>
+        <div class="list" id="tarot"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // =========================
+    // Swiss Ephemeris (WASM)
+    // =========================
+    // CDN import based on swisseph-wasm project layout.
+    // If this import ever 404s, tell me the console error and I’ll pin a working version or alternate CDN.
+    import SwissEph from "https://cdn.jsdelivr.net/gh/prolaxu/swisseph-wasm@main/src/swisseph.js";
+
+    const sweDot = document.getElementById("sweDot");
+    const sweStatus = document.getElementById("sweStatus");
+    function setSweStatus(kind, text) {
+      sweStatus.textContent = text;
+      sweDot.style.background = kind === "good" ? "var(--good)" : kind === "bad" ? "var(--bad)" : "var(--warn)";
+    }
+
+    let swe = null;
+    async function initSwe() {
+      try {
+        swe = new SwissEph();
+        await swe.initSwissEph();
+        // Lahiri sidereal
+        swe.set_sid_mode(swe.SE_SIDM_LAHIRI, 0, 0);
+        setSweStatus("good", "Ephemeris ready");
+      } catch (e) {
+        console.error(e);
+        swe = null;
+        setSweStatus("bad", "Ephemeris failed");
+      }
+    }
+
+    // =========================
+    // PRNG: cyrb128 + sfc32
+    // =========================
+    function cyrb128(str) {
+      let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
+      for (let i = 0; i < str.length; i++) {
+        const k = str.charCodeAt(i);
+        h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
+        h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
+        h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
+        h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
+      }
+      h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
+      h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
+      h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
+      h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
+      return [(h1 ^ h2 ^ h3 ^ h4) >>> 0, (h2 ^ h1) >>> 0, (h3 ^ h1) >>> 0, (h4 ^ h1) >>> 0];
+    }
+
+    function sfc32(a,b,c,d) {
+      return function() {
+        a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+        let t = (a + b) | 0;
+        a = b ^ (b >>> 9);
+        b = (c + (c << 3)) | 0;
+        c = (c << 21) | (c >>> 11);
+        d = (d + 1) | 0;
+        t = (t + d) | 0;
+        c = (c + t) | 0;
+        return (t >>> 0) / 4294967296;
+      };
+    }
+
+    function makeRng(seedStr, salt) {
+      const parts = cyrb128(seedStr + "|" + salt);
+      return sfc32(parts[0], parts[1], parts[2], parts[3]);
+    }
+
+    function randIntInclusive(rng, min, max) {
+      const r = rng();
+      return Math.floor(r * (max - min + 1)) + min;
+    }
+
+    function normalizeSeed(raw) {
+      const s = String(raw ?? "").trim();
+      return s.length ? s : "0";
+    }
+
+    // Noise seed
+    function generateNoiseSeed(length = 32) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const arr = new Uint32Array(length);
+      crypto.getRandomValues(arr);
+      let out = "";
+      for (let i = 0; i < length; i++) out += chars[arr[i] % chars.length];
+      return out;
+    }
+
+    // =========================
+    // I Ching
+    // =========================
+    const TRIGRAMS = [
+      { bits: "111", name: "Qian", meaning: "Heaven", symbol: "☰" },
+      { bits: "000", name: "Kun", meaning: "Earth", symbol: "☷" },
+      { bits: "001", name: "Zhen", meaning: "Thunder", symbol: "☳" },
+      { bits: "010", name: "Kan", meaning: "Water", symbol: "☵" },
+      { bits: "011", name: "Gen", meaning: "Mountain", symbol: "☶" },
+      { bits: "100", name: "Xun", meaning: "Wind", symbol: "☴" },
+      { bits: "101", name: "Li", meaning: "Fire", symbol: "☲" },
+      { bits: "110", name: "Dui", meaning: "Lake", symbol: "☱" }
+    ];
+
+    function trigramFromBits(bitsBottomToTop3) {
+      const key = bitsBottomToTop3.join("");
+      return TRIGRAMS.find(t => t.bits === key) || { bits: key, name: "Unknown", meaning: "", symbol: "" };
+    }
+
+    function bitsTopToBottom(bitsBottomToTop) {
+      return [...bitsBottomToTop].reverse().join("");
+    }
+
+    function lineGlyph(isYang, isMoving) {
+      const base = isYang ? "━━━━━" : "━━━ ━━━";
+      if (!isMoving) return base;
+      return isYang ? (base + "  ○") : (base + "  ×");
+    }
+
+    function generateIching(seedStr) {
+      const rng = makeRng(seedStr, "ICHING");
+      const rolls = Array.from({length: 6}, () => randIntInclusive(rng, 1, 6)); // bottom->top
+      const lines = rolls.map(n => ({ n, isYang: (n % 2 === 1), isMoving: (n === 1 || n === 6) }));
+      const primaryBits = lines.map(ln => ln.isYang ? 1 : 0);
+      const resultingBits = lines.map(ln => {
+        const bit = ln.isYang ? 1 : 0;
+        if (!ln.isMoving) return bit;
+        return bit === 1 ? 0 : 1;
+      });
+      return { rolls, lines, primaryBits, resultingBits };
+    }
+
+    // =========================
+    // Tarot
+    // =========================
+    const MAJORS = [
+      "The Fool","The Magician","The High Priestess","The Empress","The Emperor","The Hierophant",
+      "The Lovers","The Chariot","Strength","The Hermit","Wheel of Fortune","Justice","The Hanged Man",
+      "Death","Temperance","The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World"
+    ];
+    const SUITS = ["Wands","Cups","Swords","Pentacles"];
+    const RANKS = ["Ace","2","3","4","5","6","7","8","9","10","Page","Knight","Queen","King"];
+
+    function buildDeck78() {
+      const deck = [];
+      for (let i=0;i<MAJORS.length;i++) deck.push({ id: "M"+i, label: MAJORS[i], arcana: "Major" });
+      for (const suit of SUITS) {
+        for (const rank of RANKS) {
+          deck.push({ id: suit[0]+"-"+rank, label: rank+" of "+suit, arcana: "Minor", suit, rank });
+        }
+      }
+      return deck;
+    }
+
+    function seededShuffle(arr, rng) {
+      const a = [...arr];
+      for (let i=a.length-1;i>0;i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    const CELTIC_CROSS = [
+      "Present Condition","Crossing / Challenge","Root / Unconscious","Recent Past","Conscious Aim",
+      "Near Future","Self-Position","Environment","Hopes / Fears","Integrating Outcome"
+    ];
+
+    function generateTarot(seedStr) {
+      const rng = makeRng(seedStr, "TAROT");
+      const deck = buildDeck78();
+      const shuffled = seededShuffle(deck, rng);
+      const drawn = shuffled.slice(0,10).map(card => ({ ...card, reversed: (rng() < 0.5) }));
+      return { drawn };
+    }
+
+    // =========================
+    // Dreamspell + 13 Moon (Argüelles)
+    // =========================
+    // Anchor: July 26, 1987 = Kin 34 (White Galactic Wizard)
+    const DREAMSPELL_ANCHOR = { y: 1987, m: 7, d: 26, kin: 34 };
+
+    const TONES = [
+      null,
+      "Magnetic","Lunar","Electric","Self-Existing","Overtone","Rhythmic","Resonant",
+      "Galactic","Solar","Planetary","Spectral","Crystal","Cosmic"
+    ];
+    const SEALS = [
+      null,
+      "Red Dragon","White Wind","Blue Night","Yellow Seed","Red Serpent",
+      "White Worldbridger","Blue Hand","Yellow Star","Red Moon","White Dog",
+      "Blue Monkey","Yellow Human","Red Skywalker","White Wizard","Blue Eagle",
+      "Yellow Warrior","Red Earth","White Mirror","Blue Storm","Yellow Sun"
+    ];
+
+    const MOON_NAMES = [
+      null,
+      "Magnetic","Lunar","Electric","Self-Existing","Overtone","Rhythmic","Resonant",
+      "Galactic","Solar","Planetary","Spectral","Crystal","Cosmic"
+    ];
+    const WEEKDAY_NAMES = ["Dali","Seli","Gamma","Kali","Alpha","Limi","Silio"];
+
+    function isLeapYearGregorian(y) {
+      return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+    }
+    function isHunabKu(y, m, d) { return m === 2 && d === 29; }
+
+    function utcDaysBetween(y1, m1, d1, y2, m2, d2) {
+      const t1 = Date.UTC(y1, m1 - 1, d1);
+      const t2 = Date.UTC(y2, m2 - 1, d2);
+      return Math.round((t2 - t1) / 86400000);
+    }
+
+    function countFeb29BetweenExclusive(startY, startM, startD, endY, endM, endD) {
+      const forward = Date.UTC(endY, endM - 1, endD) >= Date.UTC(startY, startM - 1, startD);
+      let aY = startY, aM = startM, aD = startD;
+      let bY = endY, bM = endM, bD = endD;
+      if (!forward) { aY = endY; aM = endM; aD = endD; bY = startY; bM = startM; bD = startD; }
+
+      let count = 0;
+      for (let y = aY; y <= bY; y++) {
+        if (!isLeapYearGregorian(y)) continue;
+        const t = Date.UTC(y, 1, 29);
+        const tStart = Date.UTC(aY, aM - 1, aD);
+        const tEnd = Date.UTC(bY, bM - 1, bD);
+        if (t > tStart && t <= tEnd) count++;
+      }
+      return forward ? count : -count;
+    }
+
+    function dreamspellKinForDate(y, m, d) {
+      if (isHunabKu(y, m, d)) return { kind: "hunabku" };
+
+      const rawDiff = utcDaysBetween(DREAMSPELL_ANCHOR.y, DREAMSPELL_ANCHOR.m, DREAMSPELL_ANCHOR.d, y, m, d);
+      const feb29Adjust = countFeb29BetweenExclusive(DREAMSPELL_ANCHOR.y, DREAMSPELL_ANCHOR.m, DREAMSPELL_ANCHOR.d, y, m, d);
+      const adjustedDiff = rawDiff - feb29Adjust;
+
+      let kin = ((DREAMSPELL_ANCHOR.kin - 1 + adjustedDiff) % 260);
+      if (kin < 0) kin += 260;
+      kin += 1;
+
+      const tone = ((kin - 1) % 13) + 1;
+      const seal = ((kin - 1) % 20) + 1;
+
+      return { kind: "kin", kin, tone, seal };
+    }
+
+    function thirteenMoonDate(y, m, d) {
+      if (isHunabKu(y, m, d)) return { kind: "hunabku" };
+
+      const tDate = Date.UTC(y, m - 1, d);
+      const tStartThis = Date.UTC(y, 6, 26); // July 26
+      let yearStartY = tDate < tStartThis ? y - 1 : y;
+
+      const yearStart = { y: yearStartY, m: 7, d: 26 };
+      const dayIndexRaw = utcDaysBetween(yearStart.y, yearStart.m, yearStart.d, y, m, d);
+      const hunabAdjust = countFeb29BetweenExclusive(yearStart.y, yearStart.m, yearStart.d, y, m, d);
+      const dayIndex = dayIndexRaw - hunabAdjust;
+
+      const DOOT_INDEX = 364; // July 25
+      if (dayIndex === DOOT_INDEX) return { kind: "doot", label: "Day Out of Time" };
+      if (dayIndex < 0 || dayIndex > DOOT_INDEX) return { kind: "unknown" };
+
+      const moon = Math.floor(dayIndex / 28) + 1;
+      const dayOfMoon = (dayIndex % 28) + 1;
+      const weekday = WEEKDAY_NAMES[dayIndex % 7];
+
+      return { kind: "moon", moon, dayOfMoon, weekday, moonName: MOON_NAMES[moon] };
+    }
+
+    function parseWhenLocal() {
       const whenEl = document.getElementById("when");
-      const streamsEl = document.getElementById("streams");
-      const buildBtn = document.getElementById("buildBtn");
-      const copyBtn = document.getElementById("copyBtn");
-      const promptEl = document.getElementById("prompt");
-      const copyStateEl = document.getElementById("copyState");
+      const v = whenEl.value;
+      if (!v) return new Date();
+      const dt = new Date(v); // interpreted as local
+      if (Number.isNaN(dt.getTime())) return new Date();
+      return dt;
+    }
 
-      const statusDot = document.getElementById("statusDot");
-      const statusText = document.getElementById("statusText");
-      const dreamspellLine = document.getElementById("dreamspellLine");
-      const moonLine = document.getElementById("moonLine");
+    function updateDreamspellUI(dt) {
+      const y = dt.getFullYear();
+      const m = dt.getMonth() + 1;
+      const d = dt.getDate();
+
+      const kin = dreamspellKinForDate(y, m, d);
+      const moon = thirteenMoonDate(y, m, d);
+
+      const dreamEl = document.getElementById("dreamspellLine");
+      const moonEl = document.getElementById("moonLine");
+
+      if (kin.kind === "hunabku") {
+        dreamEl.textContent = "0.0 Hunab Ku (Leap Day, no Kin)";
+      } else {
+        dreamEl.textContent = `Kin ${kin.kin} · ${TONES[kin.tone]} ${SEALS[kin.seal]}`;
+      }
+
+      if (moon.kind === "hunabku") {
+        moonEl.textContent = "0.0 Hunab Ku (Leap Day adjustment day)";
+      } else if (moon.kind === "doot") {
+        moonEl.textContent = "Day Out of Time (July 25)";
+      } else if (moon.kind === "moon") {
+        moonEl.textContent = `${moon.moonName} Moon ${moon.moon} · Day ${moon.dayOfMoon} · ${moon.weekday}`;
+      } else {
+        moonEl.textContent = "—";
+      }
+    }
+
+    function degToSign(deg) {
+      const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+      let d = deg % 360;
+      if (d < 0) d += 360;
+      const signIndex = Math.floor(d / 30);
+      const within = d - signIndex * 30;
+      const dd = Math.floor(within);
+      const mm = Math.floor((within - dd) * 60);
+      return `${signs[signIndex]} ${String(dd).padStart(2,"0")}°${String(mm).padStart(2,"0")}'`;
+    }
+
+    function updateVedicUI(dt) {
       const vedicLine = document.getElementById("vedicLine");
       const vedicList = document.getElementById("vedicList");
+      vedicList.innerHTML = "";
 
-      // ----- Seed UI -----
-      function updateSeedCount() {
-        seedCountEl.textContent = `${seedEl.value.length} / 64`;
-      }
-      seedEl.addEventListener("input", updateSeedCount);
-      updateSeedCount();
-
-      function cryptoNoise64() {
-        // 64 chars from URL-safe base64 (no padding)
-        const bytes = new Uint8Array(48); // 48 bytes -> 64 base64 chars
-        crypto.getRandomValues(bytes);
-        let bin = "";
-        for (const b of bytes) bin += String.fromCharCode(b);
-        const b64 = btoa(bin).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-        return b64.slice(0, 64);
+      if (!swe) {
+        vedicLine.textContent = "— (ephemeris not loaded)";
+        return;
       }
 
-      genSeedBtn.addEventListener("click", () => {
-        seedEl.value = cryptoNoise64();
-        updateSeedCount();
-        refreshAll();
-      });
+      const y = dt.getUTCFullYear();
+      const m = dt.getUTCMonth() + 1;
+      const d = dt.getUTCDate();
+      const hour = dt.getUTCHours() + dt.getUTCMinutes() / 60 + dt.getUTCSeconds() / 3600;
 
-      clearBtn.addEventListener("click", () => {
-        seedEl.value = "";
-        updateSeedCount();
-        promptEl.value = "";
-        copyStateEl.textContent = "";
-        refreshAll();
-      });
+      const jd = swe.julday(y, m, d, hour);
+      const flags = swe.SEFLG_SWIEPH | swe.SEFLG_SIDEREAL;
 
-      // ----- Default datetime-local to "now" -----
-      function pad2(n) { return String(n).padStart(2, "0"); }
-      function setNowLocal() {
-        const d = new Date();
-        const v = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-        whenEl.value = v;
-      }
-      setNowLocal();
+      const ay = swe.get_ayanamsa(jd);
+      vedicLine.textContent = `Sidereal (Lahiri) · Ayanamsa: ${ay.toFixed(6)}°`;
 
-      // ----- Dreamspell (Argüelles) -----
-      // Anchor: July 26, 1987 = Kin 34 (White Galactic Wizard)
-      const DREAMSPELL_ANCHOR = { y: 1987, m: 7, d: 26, kin: 34 };
-
-      const TONES = [
-        null,
-        "Magnetic","Lunar","Electric","Self-Existing","Overtone","Rhythmic","Resonant",
-        "Galactic","Solar","Planetary","Spectral","Crystal","Cosmic"
-      ];
-      const SEALS = [
-        null,
-        "Red Dragon","White Wind","Blue Night","Yellow Seed","Red Serpent",
-        "White Worldbridger","Blue Hand","Yellow Star","Red Moon","White Dog",
-        "Blue Monkey","Yellow Human","Red Skywalker","White Wizard","Blue Eagle",
-        "Yellow Warrior","Red Earth","White Mirror","Blue Storm","Yellow Sun"
+      const bodies = [
+        { name: "Sun", id: swe.SE_SUN },
+        { name: "Moon", id: swe.SE_MOON },
+        { name: "Mercury", id: swe.SE_MERCURY },
+        { name: "Venus", id: swe.SE_VENUS },
+        { name: "Mars", id: swe.SE_MARS },
+        { name: "Jupiter", id: swe.SE_JUPITER },
+        { name: "Saturn", id: swe.SE_SATURN },
+        { name: "Rahu (True Node)", id: swe.SE_TRUE_NODE },
+        { name: "Ketu (Opposite)", id: "KETU" },
       ];
 
-      // 13 Moon calendar helpers
-      const MOON_NAMES = [
-        null,
-        "Magnetic","Lunar","Electric","Self-Existing","Overtone","Rhythmic","Resonant",
-        "Galactic","Solar","Planetary","Spectral","Crystal","Cosmic"
-      ];
-      const WEEKDAY_NAMES = ["Dali","Seli","Gamma","Kali","Alpha","Limi","Silio"];
+      const items = [];
+      let rahuLon = null;
 
-      function isLeapYearGregorian(y) {
-        return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+      for (const b of bodies) {
+        if (b.id === "KETU") continue;
+        const pos = swe.calc_ut(jd, b.id, flags);
+        if (b.id === swe.SE_TRUE_NODE) rahuLon = pos[0];
+        items.push({ name: b.name, lon: pos[0] });
       }
 
-      function isHunabKu(y, m, d) {
-        return m === 2 && d === 29;
+      if (rahuLon != null) {
+        const ketuLon = swe.degnorm(rahuLon + 180);
+        items.push({ name: "Ketu (Opposite)", lon: ketuLon });
       }
 
-      function utcDaysBetween(y1, m1, d1, y2, m2, d2) {
-        const t1 = Date.UTC(y1, m1 - 1, d1);
-        const t2 = Date.UTC(y2, m2 - 1, d2);
-        return Math.round((t2 - t1) / 86400000);
-      }
+      vedicList.innerHTML = items
+        .map(it => `<li><span class="mono">${it.name}</span>: <span class="mono">${degToSign(it.lon)}</span></li>`)
+        .join("");
+    }
 
-      function countFeb29BetweenExclusive(startY, startM, startD, endY, endM, endD) {
-        // Count Feb 29 dates strictly between start date and end date (inclusive of end for convenience),
-        // excluding start. Works forward or backward.
-        const forward = Date.UTC(endY, endM - 1, endD) >= Date.UTC(startY, startM - 1, startD);
-        let aY = startY, aM = startM, aD = startD;
-        let bY = endY, bM = endM, bD = endD;
+    // =========================
+    // Copy helpers
+    // =========================
+    function seedProtocolText(seedStr) {
+      return "Seed: " + seedStr + "\nUse deterministic PRNG\nStream A for I Ching\nStream B for Tarot";
+    }
 
-        if (!forward) {
-          aY = endY; aM = endM; aD = endD;
-          bY = startY; bM = startM; bD = startD;
-        }
+    function buildFullPromptPlusResults(out) {
+      const ich = out.ich;
+      const linesTopToBottom = [...ich.lines].reverse();
 
-        let count = 0;
-        for (let y = aY; y <= bY; y++) {
-          if (!isLeapYearGregorian(y)) continue;
-          // Feb 29 in year y
-          const t = Date.UTC(y, 1, 29);
-          const tStart = Date.UTC(aY, aM - 1, aD);
-          const tEnd = Date.UTC(bY, bM - 1, bD);
-          if (t > tStart && t <= tEnd) count++;
-        }
-        return forward ? count : -count;
-      }
+      const lineText = linesTopToBottom.map((ln, idx) => {
+        const lineNo = 6 - idx;
+        const kind = ln.isYang ? "yang" : "yin";
+        const mv = ln.isMoving ? "moving" : "static";
+        return "Line " + lineNo + ": " + ln.n + " (" + kind + ", " + mv + ")";
+      }).join("\n");
 
-      function dreamspellKinForDate(y, m, d) {
-        if (isHunabKu(y, m, d)) {
-          return { kind: "hunabku" };
-        }
+      const tarotText = out.tar.drawn.map((c, i) => {
+        return (i+1) + ". " + CELTIC_CROSS[i] + ": " + c.label + (c.reversed ? " (Reversed)" : "");
+      }).join("\n");
 
-        const rawDiff = utcDaysBetween(DREAMSPELL_ANCHOR.y, DREAMSPELL_ANCHOR.m, DREAMSPELL_ANCHOR.d, y, m, d);
+      const dt = parseWhenLocal();
+      const y = dt.getFullYear();
+      const m = dt.getMonth() + 1;
+      const d = dt.getDate();
+      const kin = dreamspellKinForDate(y, m, d);
+      const moon = thirteenMoonDate(y, m, d);
 
-        // Dreamspell removes Feb 29 from the count (0.0 Hunab Ku, no Kin)
-        const feb29Adjust = countFeb29BetweenExclusive(DREAMSPELL_ANCHOR.y, DREAMSPELL_ANCHOR.m, DREAMSPELL_ANCHOR.d, y, m, d);
+      const dreamLine = (kin.kind === "hunabku")
+        ? "0.0 Hunab Ku (Leap Day, no Kin)"
+        : `Kin ${kin.kin} · ${TONES[kin.tone]} ${SEALS[kin.seal]}`;
 
-        const adjustedDiff = rawDiff - feb29Adjust;
+      const moonLine = (moon.kind === "hunabku")
+        ? "0.0 Hunab Ku"
+        : (moon.kind === "doot")
+          ? "Day Out of Time (July 25)"
+          : (moon.kind === "moon")
+            ? `${moon.moonName} Moon ${moon.moon} · Day ${moon.dayOfMoon} · ${moon.weekday}`
+            : "—";
 
-        let kin = ((DREAMSPELL_ANCHOR.kin - 1 + adjustedDiff) % 260);
-        if (kin < 0) kin += 260;
-        kin += 1;
+      const vedicHeader = document.getElementById("vedicLine").textContent || "—";
+      const vedicItems = Array.from(document.querySelectorAll("#vedicList li")).map(li => li.textContent);
 
-        const tone = ((kin - 1) % 13) + 1;
-        const seal = ((kin - 1) % 20) + 1;
+      return [
+        seedProtocolText(out.seedStr),
+        "",
+        `DATE/TIME (local): ${dt.toString()}`,
+        `DREAMSPELL: ${dreamLine}`,
+        `13 MOON: ${moonLine}`,
+        `VEDIC: ${vedicHeader}`,
+        ...(vedicItems.length ? ["Vedic positions:", ...vedicItems.map(x => " - " + x)] : []),
+        "",
+        "I CHING (dice-style rolls bottom→top):",
+        "Rolls: " + ich.rolls.join(" "),
+        "Lines (top→bottom):",
+        lineText,
+        "",
+        "TAROT (Celtic Cross):",
+        tarotText
+      ].join("\n");
+    }
 
-        return { kind: "kin", kin, tone, seal };
-      }
-
-      function thirteenMoonDate(y, m, d) {
-        // Returns 13 Moon calendar fields for the given Gregorian date.
-        // Treat Feb 29 as Hunab Ku.
-        if (isHunabKu(y, m, d)) {
-          return { kind: "hunabku" };
-        }
-
-        // Determine 13 Moon year start (July 26) for this date.
-        // If date is before July 26, it belongs to the year that started previous July 26.
-        let yearStartY = y;
-        const tDate = Date.UTC(y, m - 1, d);
-        const tStartThis = Date.UTC(y, 6, 26); // July = 6
-        if (tDate < tStartThis) yearStartY = y - 1;
-
-        const yearStart = { y: yearStartY, m: 7, d: 26 };
-        const dayIndexRaw = utcDaysBetween(yearStart.y, yearStart.m, yearStart.d, y, m, d);
-
-        // Adjust for Hunab Ku within the year range (Feb 29)
-        const hunabAdjust = countFeb29BetweenExclusive(yearStart.y, yearStart.m, yearStart.d, y, m, d);
-        const dayIndex = dayIndexRaw - hunabAdjust; // 0-based day count in 365-day 13-moon system (with DOOT)
-
-        if (dayIndex < 0) {
-          return { kind: "unknown" };
-        }
-
-        // Day Out of Time is day 364 (0-based) = July 25.
-        const DOOT_INDEX = 364;
-
-        if (dayIndex === DOOT_INDEX) {
-          return { kind: "doot", label: "Day Out of Time" };
-        }
-
-        if (dayIndex > DOOT_INDEX) {
-          // Should not happen except weird inputs
-          return { kind: "unknown" };
-        }
-
-        // 13 moons of 28 days = 364 days indexed 0..363
-        const moon = Math.floor(dayIndex / 28) + 1;          // 1..13
-        const dayOfMoon = (dayIndex % 28) + 1;               // 1..28
-        const weekday = WEEKDAY_NAMES[dayIndex % 7];         // 0..6
-
-        return { kind: "moon", moon, dayOfMoon, weekday, moonName: MOON_NAMES[moon] };
-      }
-
-      // ----- Vedic (Sidereal Lahiri) via Swiss Ephemeris -----
-      let swe = null;
-
-      function setStatus(ok, text) {
-        statusDot.classList.toggle("good", ok);
-        statusDot.classList.toggle("bad", !ok);
-        statusDot.style.background = ok ? "var(--good)" : "var(--bad)";
-        statusText.textContent = text;
-      }
-
-      async function initSwe() {
+    async function copyToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
         try {
-          swe = new SwissEph();
-          await swe.initSwissEph();
-
-          // Set Lahiri sidereal mode for Vedic usage
-          // This constant exists on the wrapper.
-          swe.set_sid_mode(swe.SE_SIDM_LAHIRI, 0, 0);
-
-          setStatus(true, "Swiss Ephemeris ready");
-        } catch (e) {
-          console.error(e);
-          setStatus(false, "Swiss Ephemeris failed to load");
-        }
-      }
-
-      function degToSign(deg) {
-        const signs = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
-        let d = deg % 360;
-        if (d < 0) d += 360;
-        const signIndex = Math.floor(d / 30);
-        const within = d - signIndex * 30;
-        const dd = Math.floor(within);
-        const mm = Math.floor((within - dd) * 60);
-        return `${signs[signIndex]} ${String(dd).padStart(2,"0")}°${String(mm).padStart(2,"0")}'`;
-      }
-
-      function parseWhenLocal() {
-        // datetime-local gives local time; Date(value) interprets as local and stores UTC internally.
-        const v = whenEl.value;
-        if (!v) return new Date();
-        const dt = new Date(v);
-        if (Number.isNaN(dt.getTime())) return new Date();
-        return dt;
-      }
-
-      function dreamspellFromWhen(dt) {
-        // Use local calendar date fields (America/Detroit assumed by user's device time zone).
-        const y = dt.getFullYear();
-        const m = dt.getMonth() + 1;
-        const d = dt.getDate();
-
-        const kin = dreamspellKinForDate(y, m, d);
-        const moon = thirteenMoonDate(y, m, d);
-
-        return { y, m, d, kin, moon };
-      }
-
-      function buildPromptText(seed, streamsMode, dsSummary, vedicSummary) {
-        const streams = streamsMode === "A-tarot_B-iching"
-          ? ["Stream A for Tarot", "Stream B for I Ching"]
-          : ["Stream A for I Ching", "Stream B for Tarot"];
-
-        const safeSeed = seed && seed.trim().length ? seed.trim() : "(blank)";
-
-        return [
-          `Seed: ${safeSeed}`,
-          `Use deterministic PRNG`,
-          streams[0],
-          streams[1],
-          ``,
-          `Dreamspell (calculated): ${dsSummary}`,
-          `Vedic sidereal transits (calculated): ${vedicSummary}`,
-          ``,
-          `Deliver a full divination report for today.`,
-          `Tarot should not directly map numbers to I Ching lines.`,
-        ].join("\n");
-      }
-
-      function clearVedicUI() {
-        vedicList.innerHTML = "";
-        vedicLine.textContent = "—";
-      }
-
-      function clearDreamspellUI() {
-        dreamspellLine.textContent = "—";
-        moonLine.textContent = "—";
-      }
-
-      function updateDreamspellUI(info) {
-        if (info.kin.kind === "hunabku") {
-          dreamspellLine.textContent = "0.0 Hunab Ku (Leap Day, no Kin)";
-        } else {
-          const { kin, tone, seal } = info.kin;
-          dreamspellLine.textContent = `Kin ${kin} · ${TONES[tone]} ${SEALS[seal]}`;
-        }
-
-        if (info.moon.kind === "hunabku") {
-          moonLine.textContent = "0.0 Hunab Ku (Leap Day adjustment day)";
-        } else if (info.moon.kind === "doot") {
-          moonLine.textContent = "Day Out of Time (July 25)";
-        } else if (info.moon.kind === "moon") {
-          moonLine.textContent = `${info.moon.moonName} Moon ${info.moon.moon} · Day ${info.moon.dayOfMoon} · ${info.moon.weekday}`;
-        } else {
-          moonLine.textContent = "—";
-        }
-      }
-
-      function updateVedicUI(dt) {
-        clearVedicUI();
-        if (!swe) return;
-
-        // Convert UTC date parts for julday
-        const y = dt.getUTCFullYear();
-        const m = dt.getUTCMonth() + 1;
-        const d = dt.getUTCDate();
-        const hour = dt.getUTCHours() + dt.getUTCMinutes() / 60 + dt.getUTCSeconds() / 3600;
-
-        const jd = swe.julday(y, m, d, hour);
-
-        // Flags: Swiss ephemeris + sidereal
-        const flags = swe.SEFLG_SWIEPH | swe.SEFLG_SIDEREAL;
-
-        const bodies = [
-          { name: "Sun", id: swe.SE_SUN },
-          { name: "Moon", id: swe.SE_MOON },
-          { name: "Mercury", id: swe.SE_MERCURY },
-          { name: "Venus", id: swe.SE_VENUS },
-          { name: "Mars", id: swe.SE_MARS },
-          { name: "Jupiter", id: swe.SE_JUPITER },
-          { name: "Saturn", id: swe.SE_SATURN },
-          { name: "Rahu (True Node)", id: swe.SE_TRUE_NODE },
-          { name: "Ketu (Opposite)", id: "KETU" },
-        ];
-
-        // Ayanamsa value, shown for transparency
-        const ay = swe.get_ayanamsa(jd);
-
-        vedicLine.textContent = `Sidereal (Lahiri) · Ayanamsa: ${ay.toFixed(6)}°`;
-
-        const items = [];
-        for (const b of bodies) {
-          if (b.id === "KETU") {
-            // Ketu is opposite Rahu
-            const rahu = swe.calc_ut(jd, swe.SE_TRUE_NODE, flags);
-            const ketuLon = swe.degnorm(rahu[0] + 180);
-            items.push({ name: b.name, lon: ketuLon });
-          } else {
-            const pos = swe.calc_ut(jd, b.id, flags);
-            items.push({ name: b.name, lon: pos[0] });
-          }
-        }
-
-        vedicList.innerHTML = items
-          .map((it) => `<li><span class="mono">${it.name}</span>: <span class="mono">${degToSign(it.lon)}</span></li>`)
-          .join("");
-      }
-
-      async function copyToClipboard(text) {
-        try {
-          await navigator.clipboard.writeText(text);
-          copyStateEl.textContent = "Copied to clipboard.";
-          copyStateEl.style.color = "var(--good)";
-        } catch (e) {
-          // Fallback
           const ta = document.createElement("textarea");
           ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
           document.body.appendChild(ta);
           ta.select();
-          try {
-            document.execCommand("copy");
-            copyStateEl.textContent = "Copied to clipboard.";
-            copyStateEl.style.color = "var(--good)";
-          } catch {
-            copyStateEl.textContent = "Copy failed. Your browser blocked clipboard access.";
-            copyStateEl.style.color = "var(--bad)";
-          } finally {
-            document.body.removeChild(ta);
-          }
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          return true;
+        } catch {
+          return false;
         }
       }
+    }
 
-      function refreshAll() {
-        const dt = parseWhenLocal();
-        const ds = dreamspellFromWhen(dt);
-        updateDreamspellUI(ds);
-        updateVedicUI(dt);
+    // =========================
+    // Render
+    // =========================
+    function render(out) {
+      document.getElementById("seedOut").textContent = out.seedStr;
+      document.getElementById("proto").textContent = seedProtocolText(out.seedStr);
+
+      const rollsEl = document.getElementById("rolls");
+      rollsEl.innerHTML = "";
+      out.ich.rolls.forEach(r => {
+        const s = document.createElement("span");
+        s.className = "pill mono";
+        s.textContent = String(r);
+        rollsEl.appendChild(s);
+      });
+
+      const linesEl = document.getElementById("lines");
+      linesEl.innerHTML = "";
+      [...out.ich.lines].reverse().forEach(ln => {
+        const div = document.createElement("div");
+        div.style.display = "flex";
+        div.style.justifyContent = "space-between";
+        div.style.gap = "12px";
+
+        const left = document.createElement("span");
+        left.textContent = lineGlyph(ln.isYang, ln.isMoving);
+
+        const right = document.createElement("span");
+        right.className = "muted";
+        right.textContent = ln.isMoving ? "moving" : "static";
+
+        div.appendChild(left);
+        div.appendChild(right);
+        linesEl.appendChild(div);
+      });
+
+      document.getElementById("pbits").textContent = out.primary.bits;
+      document.getElementById("rbits").textContent = out.resulting.bits;
+
+      document.getElementById("ptri").innerHTML =
+        "Upper trigram: " + out.primary.upper.symbol + " " + out.primary.upper.name + " (" + out.primary.upper.meaning + ")" +
+        "<br/>Lower trigram: " + out.primary.lower.symbol + " " + out.primary.lower.name + " (" + out.primary.lower.meaning + ")";
+
+      document.getElementById("rtri").innerHTML =
+        "Upper trigram: " + out.resulting.upper.symbol + " " + out.resulting.upper.name + " (" + out.resulting.upper.meaning + ")" +
+        "<br/>Lower trigram: " + out.resulting.lower.symbol + " " + out.resulting.lower.name + " (" + out.resulting.lower.meaning + ")";
+
+      const tarotEl = document.getElementById("tarot");
+      tarotEl.innerHTML = "";
+      out.tar.drawn.forEach((card, i) => {
+        const item = document.createElement("div");
+        item.className = "item";
+
+        const top = document.createElement("div");
+        top.className = "topline";
+
+        const left = document.createElement("div");
+        const title = document.createElement("div");
+        title.style.fontWeight = "600";
+        title.textContent = (i+1) + ". " + CELTIC_CROSS[i];
+
+        const label = document.createElement("div");
+        label.textContent = card.label + (card.reversed ? " (Reversed)" : "");
+
+        left.appendChild(title);
+        left.appendChild(label);
+
+        const right = document.createElement("div");
+        right.className = "muted";
+        right.style.textAlign = "right";
+        right.textContent = card.arcana + (card.suit ? " · " + card.suit : "");
+
+        top.appendChild(left);
+        top.appendChild(right);
+        item.appendChild(top);
+        tarotEl.appendChild(item);
+      });
+    }
+
+    function clearUI() {
+      document.getElementById("seedOut").textContent = "(none yet)";
+      document.getElementById("proto").textContent = "(generate to fill)";
+      document.getElementById("rolls").innerHTML = "";
+      document.getElementById("lines").innerHTML = "";
+      document.getElementById("pbits").textContent = "";
+      document.getElementById("rbits").textContent = "";
+      document.getElementById("ptri").innerHTML = "";
+      document.getElementById("rtri").innerHTML = "";
+      document.getElementById("tarot").innerHTML = "";
+
+      document.getElementById("dreamspellLine").textContent = "—";
+      document.getElementById("moonLine").textContent = "—";
+      document.getElementById("vedicLine").textContent = "—";
+      document.getElementById("vedicList").innerHTML = "";
+    }
+
+    function compute(seedStr) {
+      const ich = generateIching(seedStr);
+      const tar = generateTarot(seedStr);
+
+      const primaryLower = trigramFromBits(ich.primaryBits.slice(0,3));
+      const primaryUpper = trigramFromBits(ich.primaryBits.slice(3,6));
+      const resultingLower = trigramFromBits(ich.resultingBits.slice(0,3));
+      const resultingUpper = trigramFromBits(ich.resultingBits.slice(3,6));
+
+      return {
+        seedStr,
+        ich,
+        tar,
+        primary: { bits: bitsTopToBottom(ich.primaryBits), lower: primaryLower, upper: primaryUpper },
+        resulting: { bits: bitsTopToBottom(ich.resultingBits), lower: resultingLower, upper: resultingUpper }
+      };
+    }
+
+    // =========================
+    // Wire up UI
+    // =========================
+    const seedInput = document.getElementById("seed");
+    const statusEl = document.getElementById("status");
+    const whenInput = document.getElementById("when");
+    let currentOut = null;
+
+    function pad2(n) { return String(n).padStart(2, "0"); }
+    function setNowLocal() {
+      const d = new Date();
+      const v = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+      whenInput.value = v;
+    }
+
+    function refreshCalendars() {
+      const dt = parseWhenLocal();
+      updateDreamspellUI(dt);
+      updateVedicUI(dt);
+    }
+
+    document.getElementById("gen").addEventListener("click", () => {
+      let seedStr = seedInput.value.trim();
+
+      if (!seedStr) {
+        seedStr = generateNoiseSeed(32);
+        seedInput.value = seedStr;
       }
 
-      whenEl.addEventListener("change", refreshAll);
-      whenEl.addEventListener("input", refreshAll);
+      seedStr = normalizeSeed(seedStr);
+      currentOut = compute(seedStr);
+      render(currentOut);
 
-      buildBtn.addEventListener("click", () => {
-        const dt = parseWhenLocal();
-        const ds = dreamspellFromWhen(dt);
+      refreshCalendars();
 
-        const dsSummary = (ds.kin.kind === "hunabku")
-          ? "0.0 Hunab Ku (Leap Day, no Kin)"
-          : `Kin ${ds.kin.kin} (${TONES[ds.kin.tone]} ${SEALS[ds.kin.seal]})`;
+      statusEl.textContent = "";
+    });
 
-        const vedicSummary = swe
-          ? "Sidereal (Lahiri) positions listed below"
-          : "Swiss Ephemeris not loaded";
+    document.getElementById("clear").addEventListener("click", () => {
+      seedInput.value = "";
+      currentOut = null;
+      statusEl.textContent = "";
+      clearUI();
+    });
 
-        const txt = buildPromptText(seedEl.value, streamsEl.value, dsSummary, vedicSummary);
-        promptEl.value = txt;
-        copyStateEl.textContent = "";
-      });
+    document.getElementById("copyProto").addEventListener("click", async () => {
+      if (!currentOut) {
+        statusEl.textContent = "Generate first.";
+        setTimeout(() => statusEl.textContent = "", 2000);
+        return;
+      }
+      const ok = await copyToClipboard(seedProtocolText(currentOut.seedStr));
+      statusEl.textContent = ok ? "Copied seed protocol." : "Copy failed (clipboard blocked).";
+      setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
+    });
 
-      copyBtn.addEventListener("click", async () => {
-        if (!promptEl.value.trim()) {
-          copyStateEl.textContent = "Nothing to copy yet. Click Build Prompt first.";
-          copyStateEl.style.color = "var(--warn)";
-          return;
-        }
-        await copyToClipboard(promptEl.value);
-      });
+    document.getElementById("copyAll").addEventListener("click", async () => {
+      if (!currentOut) {
+        statusEl.textContent = "Generate first.";
+        setTimeout(() => statusEl.textContent = "", 2000);
+        return;
+      }
+      refreshCalendars();
+      const ok = await copyToClipboard(buildFullPromptPlusResults(currentOut));
+      statusEl.textContent = ok ? "Copied full prompt + results." : "Copy failed (clipboard blocked).";
+      setTimeout(() => statusEl.textContent = "", ok ? 2000 : 3500);
+    });
 
-      // Boot
-      await initSwe();
-      refreshAll();
-    </script>
-  </body>
+    whenInput.addEventListener("change", () => {
+      refreshCalendars();
+    });
+    whenInput.addEventListener("input", () => {
+      refreshCalendars();
+    });
+
+    // Boot
+    setNowLocal();
+    clearUI();
+    await initSwe();
+    refreshCalendars();
+  </script>
+</body>
 </html>
